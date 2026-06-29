@@ -1,0 +1,9 @@
+{
+  "holdings": [
+    {"ticker": "SPY", "weight": 0.45},
+    {"ticker": "TLT", "weight": 0.25},
+    {"ticker": "GLD", "weight": 0.15},
+    {"ticker": "XLE", "weight": 0.10},
+    {"ticker": "BTC", "weight": 0.05}
+  ]
+}

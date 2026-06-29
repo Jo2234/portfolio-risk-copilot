@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portfolio Risk Copilot</title>
+  <style>
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0b1020; color: #e6edf7; }
+    main { max-width: 1120px; margin: 0 auto; padding: 48px 24px; }
+    .hero { display: grid; gap: 12px; margin-bottom: 28px; }
+    h1 { font-size: clamp(2rem, 5vw, 4rem); margin: 0; letter-spacing: -0.05em; }
+    p { color: #9fb0c8; line-height: 1.6; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    textarea, pre { min-height: 520px; width: 100%; box-sizing: border-box; border: 1px solid #26334d; border-radius: 16px; background: #111a2e; color: #d8e2f3; padding: 18px; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    button { background: #7c5cff; color: white; border: 0; padding: 13px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #9077ff; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
+    .card { background: #111a2e; border: 1px solid #26334d; border-radius: 16px; padding: 16px; }
+    .card strong { display: block; font-size: 1.4rem; color: #fff; }
+    @media (max-width: 800px) { .grid, .cards { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>Portfolio Risk Copilot</h1>
+    <p>API-first portfolio analysis: volatility, VaR, expected shortfall, drawdown, concentration flags, correlations, scenario stress tests, and a plain-English risk memo.</p>
+    <button onclick="analyze()">Analyze sample portfolio</button>
+  </section>
+  <section class="cards" id="cards"></section>
+  <section class="grid">
+    <textarea id="payload">{
+  "holdings": [
+    {"ticker": "NVDA", "weight": 0.50},
+    {"ticker": "TLT", "weight": 0.30},
+    {"ticker": "GLD", "weight": 0.20}
+  ],
+  "price_history": {
+    "NVDA": [100, 104, 102, 110, 108, 112],
+    "TLT": [90, 89, 88, 87, 89, 88],
+    "GLD": [180, 181, 183, 182, 184, 185]
+  }
+}</textarea>
+    <pre id="output">Click analyze to call POST /analyze.</pre>
+  </section>
+</main>
+<script>
+async function analyze() {
+  const payload = JSON.parse(document.getElementById('payload').value);
+  const response = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+  const data = await response.json();
+  document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('cards').innerHTML = response.ok ? `
+    <div class="card"><span>Risk score</span><strong>${data.risk_score}/100</strong></div>
+    <div class="card"><span>Volatility</span><strong>${(data.metrics.volatility*100).toFixed(1)}%</strong></div>
+    <div class="card"><span>Max drawdown</span><strong>${(data.metrics.max_drawdown*100).toFixed(1)}%</strong></div>
+    <div class="card"><span>Worst stress</span><strong>${(Math.min(...data.stress_tests.map(s => s.estimated_impact))*100).toFixed(1)}%</strong></div>` : '';
+}
+</script>
+</body>
+</html>

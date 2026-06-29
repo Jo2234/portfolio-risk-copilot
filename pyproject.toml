@@ -1,0 +1,30 @@
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portfolio-risk-copilot"
+version = "0.1.0"
+description = "API-first portfolio risk copilot with risk metrics, concentration flags, correlations, stress tests, and plain-English reports."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "yfinance>=0.2.40"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2", "httpx>=0.27"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["frontend*", "examples*", "tests*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
