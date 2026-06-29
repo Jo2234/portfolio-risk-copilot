@@ -4,57 +4,224 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Portfolio Risk Copilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #0b1020; color: #e6edf7; }
-    main { max-width: 1120px; margin: 0 auto; padding: 48px 24px; }
-    .hero { display: grid; gap: 12px; margin-bottom: 28px; }
-    h1 { font-size: clamp(2rem, 5vw, 4rem); margin: 0; letter-spacing: -0.05em; }
-    p { color: #9fb0c8; line-height: 1.6; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    textarea, pre { min-height: 520px; width: 100%; box-sizing: border-box; border: 1px solid #26334d; border-radius: 16px; background: #111a2e; color: #d8e2f3; padding: 18px; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    button { background: #7c5cff; color: white; border: 0; padding: 13px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-    button:hover { background: #9077ff; }
-    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
-    .card { background: #111a2e; border: 1px solid #26334d; border-radius: 16px; padding: 16px; }
-    .card strong { display: block; font-size: 1.4rem; color: #fff; }
-    @media (max-width: 800px) { .grid, .cards { grid-template-columns: 1fr; } }
+    :root {
+      --bg: #08090a;
+      --panel: rgba(255,255,255,0.035);
+      --panel-2: rgba(255,255,255,0.055);
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #f7f8f8;
+      --muted: #8a8f98;
+      --soft: #d0d6e0;
+      --accent: #7170ff;
+      --accent-2: #5e6ad2;
+      --green: #10b981;
+      --red: #f87171;
+      --amber: #f59e0b;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-feature-settings: "cv01", "ss03";
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 0%, rgba(113,112,255,0.22), transparent 28rem),
+        radial-gradient(circle at 88% 12%, rgba(16,185,129,0.11), transparent 25rem),
+        linear-gradient(180deg, #090a12 0%, #08090a 52%, #050608 100%);
+    }
+    main { width: min(1180px, calc(100vw - 40px)); margin: 0 auto; padding: 28px 0 54px; }
+    nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 54px; color: var(--muted); font-size: 13px; }
+    .brand { display:flex; align-items:center; gap:10px; color: var(--text); font-weight: 600; }
+    .mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), #9ca3ff); box-shadow: 0 0 40px rgba(113,112,255,.35); }
+    .nav-pill { border: 1px solid var(--border); border-radius: 999px; padding: 7px 11px; background: rgba(255,255,255,.025); }
+    .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 32px; align-items: end; margin-bottom: 26px; }
+    h1 { font-size: clamp(44px, 6vw, 76px); line-height: .94; letter-spacing: -0.07em; margin: 0 0 18px; font-weight: 600; }
+    .subtitle { max-width: 760px; color: var(--soft); font-size: 17px; line-height: 1.65; margin: 0; }
+    .hero-card { border: 1px solid var(--border); background: var(--panel); border-radius: 24px; padding: 18px; box-shadow: inset 0 1px rgba(255,255,255,.05); }
+    .mini-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mini { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: rgba(255,255,255,.03); }
+    .mini span { display:block; font-size: 11px; color: var(--muted); margin-bottom: 7px; }
+    .mini strong { font-size: 20px; letter-spacing: -0.04em; }
+    .toolbar { display:flex; gap: 12px; margin: 24px 0; flex-wrap: wrap; align-items:center; }
+    button {
+      border: 0; color: white; padding: 12px 16px; border-radius: 12px; font-weight: 600; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent-2), #865dff);
+      box-shadow: 0 12px 34px rgba(113,112,255,.24), inset 0 1px rgba(255,255,255,.22);
+    }
+    button.secondary { background: rgba(255,255,255,.04); border: 1px solid var(--border); box-shadow:none; color: var(--soft); }
+    button:hover { filter: brightness(1.08); }
+    .status { color: var(--muted); font-size: 13px; }
+    .workspace { display: grid; grid-template-columns: 420px 1fr; gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--border); border-radius: var(--radius); background: rgba(13,20,35,.72); backdrop-filter: blur(18px); overflow: hidden; box-shadow: inset 0 1px rgba(255,255,255,.045); }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--soft); font-size: 13px; font-weight: 600; }
+    .panel-header small { color: var(--muted); font-weight: 400; }
+    textarea { width:100%; min-height: 520px; resize: vertical; border:0; outline:0; background: transparent; color: #d8e2f3; padding: 16px; font: 13px/1.6 'JetBrains Mono', ui-monospace, monospace; }
+    .results { display: grid; gap: 16px; padding: 16px; }
+    .empty { min-height: 520px; display:grid; place-items:center; text-align:center; color: var(--muted); padding: 30px; }
+    .empty h2 { margin:0 0 8px; color: var(--text); font-size: 22px; letter-spacing:-.04em; }
+    .score-wrap { display:grid; grid-template-columns: 180px 1fr; gap: 16px; }
+    .score-card { border:1px solid var(--border); border-radius: 18px; background: linear-gradient(180deg, rgba(113,112,255,.18), rgba(255,255,255,.035)); padding: 18px; }
+    .score-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .score { font-size: 48px; line-height:1; letter-spacing:-.08em; font-weight:600; }
+    .summary { border: 1px solid var(--border); border-radius: 18px; padding: 18px; background: rgba(255,255,255,.03); color: var(--soft); line-height: 1.55; }
+    .cards { display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric { border:1px solid var(--border); border-radius: 14px; padding: 14px; background: rgba(255,255,255,.03); }
+    .metric span { display:block; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .metric strong { font-size: 20px; letter-spacing:-.04em; }
+    .section { border:1px solid var(--border); border-radius: 18px; background: rgba(255,255,255,.025); padding: 16px; }
+    .section h3 { margin:0 0 12px; font-size: 15px; letter-spacing:-.02em; }
+    .list { display:grid; gap: 9px; margin:0; padding:0; list-style:none; }
+    .list li { display:flex; gap:9px; color: var(--soft); font-size: 14px; line-height: 1.45; }
+    .dot { flex:0 0 7px; height:7px; border-radius:999px; background: var(--accent); margin-top: 7px; }
+    .stress-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stress { border:1px solid var(--border); border-radius: 14px; padding: 13px; background: rgba(255,255,255,.025); }
+    .stress-top { display:flex; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .stress-name { font-size: 13px; font-weight:600; color: var(--text); }
+    .impact { font: 12px 'JetBrains Mono', monospace; color: var(--red); }
+    .stress p { margin:0; color: var(--muted); font-size:12px; line-height:1.45; }
+    .bars { display:grid; gap: 10px; }
+    .bar-row { display:grid; grid-template-columns: 160px 1fr 52px; gap:10px; align-items:center; font-size:13px; color:var(--soft); }
+    .bar-track { height: 8px; border-radius:999px; background: rgba(255,255,255,.06); overflow:hidden; }
+    .bar-fill { height:100%; border-radius:999px; background: linear-gradient(90deg, var(--accent), #10b981); }
+    details { border:1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: rgba(255,255,255,.02); }
+    summary { cursor:pointer; color: var(--soft); font-weight:600; font-size:13px; }
+    pre { overflow:auto; max-height: 360px; white-space: pre-wrap; color:#d8e2f3; font:12px/1.55 'JetBrains Mono', monospace; }
+    .error { border-color: rgba(248,113,113,.35); color: #fecaca; background: rgba(248,113,113,.08); }
+    @media (max-width: 980px) { .hero, .workspace, .score-wrap { grid-template-columns: 1fr; } .cards, .stress-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { main { width: min(100vw - 24px, 1180px); padding-top:18px; } nav { margin-bottom: 34px; } .cards, .stress-grid, .mini-grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } h1 { font-size: 42px; } }
   </style>
 </head>
 <body>
 <main>
+  <nav>
+    <div class="brand"><div class="mark"></div><span>Portfolio Risk Copilot</span></div>
+    <div class="nav-pill">FastAPI · Stress tests · Risk memo</div>
+  </nav>
+
   <section class="hero">
-    <h1>Portfolio Risk Copilot</h1>
-    <p>API-first portfolio analysis: volatility, VaR, expected shortfall, drawdown, concentration flags, correlations, scenario stress tests, and a plain-English risk memo.</p>
-    <button onclick="analyze()">Analyze sample portfolio</button>
+    <div>
+      <h1>Portfolio risk, explained like an analyst.</h1>
+      <p class="subtitle">Paste holdings, run deterministic risk calculations, and get a clean copilot memo with concentration flags, correlations, scenario stress tests, and practical portfolio suggestions.</p>
+    </div>
+    <div class="hero-card">
+      <div class="mini-grid">
+        <div class="mini"><span>Engine</span><strong>API-first</strong></div>
+        <div class="mini"><span>Scenarios</span><strong>5 stress tests</strong></div>
+        <div class="mini"><span>Output</span><strong>Risk memo</strong></div>
+        <div class="mini"><span>Data</span><strong>Inline or live</strong></div>
+      </div>
+    </div>
   </section>
-  <section class="cards" id="cards"></section>
-  <section class="grid">
-    <textarea id="payload">{
-  "holdings": [
-    {"ticker": "NVDA", "weight": 0.50},
-    {"ticker": "TLT", "weight": 0.30},
-    {"ticker": "GLD", "weight": 0.20}
-  ],
-  "price_history": {
-    "NVDA": [100, 104, 102, 110, 108, 112],
-    "TLT": [90, 89, 88, 87, 89, 88],
-    "GLD": [180, 181, 183, 182, 184, 185]
-  }
-}</textarea>
-    <pre id="output">Click analyze to call POST /analyze.</pre>
+
+  <div class="toolbar">
+    <button onclick="analyze()" id="analyzeBtn">Analyze sample portfolio</button>
+    <button class="secondary" onclick="loadBalanced()">Load balanced sample</button>
+    <button class="secondary" onclick="resetSample()">Reset AI-heavy sample</button>
+    <span class="status" id="status">Ready</span>
+  </div>
+
+  <section class="workspace">
+    <div class="panel">
+      <div class="panel-header"><span>Input portfolio</span><small>JSON request</small></div>
+      <textarea id="payload" spellcheck="false"></textarea>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span>Analysis output</span><small id="outputHint">Human-readable view</small></div>
+      <div id="output" class="empty">
+        <div><h2>No analysis yet</h2><p>Click analyze to generate a formatted risk dashboard and memo. No more giant raw JSON wall.</p></div>
+      </div>
+    </div>
   </section>
 </main>
 <script>
+const aiHeavy = {
+  holdings: [
+    {ticker: 'NVDA', weight: 0.50},
+    {ticker: 'TLT', weight: 0.30},
+    {ticker: 'GLD', weight: 0.20}
+  ],
+  price_history: {
+    NVDA: [100, 104, 102, 110, 108, 112],
+    TLT: [90, 89, 88, 87, 89, 88],
+    GLD: [180, 181, 183, 182, 184, 185]
+  }
+};
+const balanced = {
+  holdings: [
+    {ticker: 'SPY', weight: 0.45},
+    {ticker: 'TLT', weight: 0.25},
+    {ticker: 'GLD', weight: 0.15},
+    {ticker: 'XLE', weight: 0.10},
+    {ticker: 'BTC', weight: 0.05}
+  ],
+  price_history: {
+    SPY: [100, 101, 99, 103, 104, 106, 105],
+    TLT: [100, 101, 102, 100, 99, 101, 102],
+    GLD: [100, 100.5, 101, 101.5, 102, 102.4, 103],
+    XLE: [100, 98, 101, 103, 100, 104, 105],
+    BTC: [100, 106, 96, 112, 105, 118, 110]
+  }
+};
+function setPayload(obj) { document.getElementById('payload').value = JSON.stringify(obj, null, 2); }
+function resetSample(){ setPayload(aiHeavy); }
+function loadBalanced(){ setPayload(balanced); }
+resetSample();
+function fmtPct(x, digits=1){ return `${(x*100).toFixed(digits)}%`; }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+function titleize(s){ return s.replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase()); }
+function renderList(items){ return `<ul class="list">${items.map(x => `<li><span class="dot"></span><span>${escapeHtml(x)}</span></li>`).join('')}</ul>`; }
+function renderBars(exposures){
+  return `<div class="bars">${Object.entries(exposures).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
+    <div class="bar-row"><span>${titleize(k)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, v*100)}%"></div></div><strong>${fmtPct(v,0)}</strong></div>`).join('')}</div>`;
+}
+function renderResult(data){
+  const m = data.metrics;
+  const worst = data.stress_tests.reduce((a,b) => a.estimated_impact < b.estimated_impact ? a : b);
+  document.getElementById('outputHint').textContent = `Risk score ${data.risk_score}/100`;
+  document.getElementById('output').className = 'results';
+  document.getElementById('output').innerHTML = `
+    <div class="score-wrap">
+      <div class="score-card"><div class="score-label">Risk score</div><div class="score">${data.risk_score}</div><div class="score-label">out of 100</div></div>
+      <div class="summary">${escapeHtml(data.summary)}</div>
+    </div>
+    <div class="cards">
+      <div class="metric"><span>Volatility</span><strong>${fmtPct(m.volatility)}</strong></div>
+      <div class="metric"><span>Daily VaR 95%</span><strong>${fmtPct(m.value_at_risk_95,2)}</strong></div>
+      <div class="metric"><span>Max drawdown</span><strong>${fmtPct(m.max_drawdown)}</strong></div>
+      <div class="metric"><span>Worst stress</span><strong>${fmtPct(worst.estimated_impact)}</strong></div>
+    </div>
+    <div class="section"><h3>Concentration flags</h3>${renderList(data.concentration.flags)}</div>
+    <div class="section"><h3>Theme exposures</h3>${renderBars(data.theme_exposures)}</div>
+    <div class="section"><h3>Stress tests</h3><div class="stress-grid">${data.stress_tests.map(s => `
+      <div class="stress"><div class="stress-top"><span class="stress-name">${escapeHtml(s.scenario)}</span><span class="impact">${fmtPct(s.estimated_impact)}</span></div><p>${escapeHtml(s.rationale)}</p></div>`).join('')}</div></div>
+    <div class="section"><h3>Suggestions</h3>${renderList(data.suggestions)}</div>
+    <details><summary>Raw JSON response</summary><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre></details>
+  `;
+}
 async function analyze() {
-  const payload = JSON.parse(document.getElementById('payload').value);
-  const response = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-  const data = await response.json();
-  document.getElementById('output').textContent = JSON.stringify(data, null, 2);
-  document.getElementById('cards').innerHTML = response.ok ? `
-    <div class="card"><span>Risk score</span><strong>${data.risk_score}/100</strong></div>
-    <div class="card"><span>Volatility</span><strong>${(data.metrics.volatility*100).toFixed(1)}%</strong></div>
-    <div class="card"><span>Max drawdown</span><strong>${(data.metrics.max_drawdown*100).toFixed(1)}%</strong></div>
-    <div class="card"><span>Worst stress</span><strong>${(Math.min(...data.stress_tests.map(s => s.estimated_impact))*100).toFixed(1)}%</strong></div>` : '';
+  const status = document.getElementById('status');
+  const btn = document.getElementById('analyzeBtn');
+  try {
+    status.textContent = 'Analyzing…'; btn.disabled = true;
+    const payload = JSON.parse(document.getElementById('payload').value);
+    const response = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Analysis failed');
+    renderResult(data);
+    status.textContent = 'Analysis complete';
+  } catch (err) {
+    document.getElementById('output').className = 'results';
+    document.getElementById('output').innerHTML = `<div class="section error"><h3>Could not analyze portfolio</h3><p>${escapeHtml(err.message)}</p></div>`;
+    status.textContent = 'Error';
+  } finally { btn.disabled = false; }
 }
 </script>
 </body>
