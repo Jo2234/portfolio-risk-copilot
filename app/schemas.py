@@ -57,6 +57,14 @@ class CopilotReport(BaseModel):
     report_markdown: str
 
 
+class DataSource(BaseModel):
+    type: str
+    provider: str
+    lookback_period: str
+    tickers: List[str]
+    price_points: Dict[str, int]
+
+
 class PortfolioResponse(BaseModel):
     summary: str
     risk_score: int
@@ -66,4 +74,6 @@ class PortfolioResponse(BaseModel):
     correlations: Dict[str, Dict[str, float]]
     stress_tests: List[StressScenarioResult]
     suggestions: List[str]
+    methodology: List[str]
+    data_source: DataSource
     report_markdown: str

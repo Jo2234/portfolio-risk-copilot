@@ -51,6 +51,14 @@
     .mini span { display:block; font-size: 11px; color: var(--muted); margin-bottom: 7px; }
     .mini strong { font-size: 20px; letter-spacing: -0.04em; }
     .toolbar { display:flex; gap: 12px; margin: 24px 0; flex-wrap: wrap; align-items:center; }
+    .live-builder { border: 1px solid var(--border); border-radius: 22px; background: rgba(255,255,255,.03); padding: 16px; margin: 20px 0 24px; display: grid; gap: 12px; }
+    .live-builder h2 { margin: 0; font-size: 16px; letter-spacing: -.03em; }
+    .live-builder p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .holding-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .holding-input { display: grid; grid-template-columns: 1fr 82px; gap: 8px; }
+    input, select { width: 100%; color: var(--text); background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; outline: none; font: 13px 'Inter', system-ui, sans-serif; }
+    input:focus, select:focus { border-color: rgba(113,112,255,.55); box-shadow: 0 0 0 3px rgba(113,112,255,.14); }
+    .builder-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     button {
       border: 0; color: white; padding: 12px 16px; border-radius: 12px; font-weight: 600; cursor: pointer;
       background: linear-gradient(135deg, var(--accent-2), #865dff);
@@ -95,8 +103,8 @@
     summary { cursor:pointer; color: var(--soft); font-weight:600; font-size:13px; }
     pre { overflow:auto; max-height: 360px; white-space: pre-wrap; color:#d8e2f3; font:12px/1.55 'JetBrains Mono', monospace; }
     .error { border-color: rgba(248,113,113,.35); color: #fecaca; background: rgba(248,113,113,.08); }
-    @media (max-width: 980px) { .hero, .workspace, .score-wrap { grid-template-columns: 1fr; } .cards, .stress-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 620px) { main { width: min(100vw - 24px, 1180px); padding-top:18px; } nav { margin-bottom: 34px; } .cards, .stress-grid, .mini-grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } h1 { font-size: 42px; } }
+    @media (max-width: 980px) { .hero, .workspace, .score-wrap { grid-template-columns: 1fr; } .cards, .stress-grid, .holding-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { main { width: min(100vw - 24px, 1180px); padding-top:18px; } nav { margin-bottom: 34px; } .cards, .stress-grid, .mini-grid, .holding-grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } h1 { font-size: 42px; } }
   </style>
 </head>
 <body>
@@ -118,6 +126,20 @@
         <div class="mini"><span>Output</span><strong>Risk memo</strong></div>
         <div class="mini"><span>Data</span><strong>Inline or live</strong></div>
       </div>
+    </div>
+  </section>
+
+  <section class="live-builder">
+    <div>
+      <h2>Live portfolio builder</h2>
+      <p>Enter tickers and weights. If you leave price history out, the backend fetches adjusted close prices via yfinance and explains the calculation path.</p>
+    </div>
+    <div class="holding-grid" id="holdingGrid"></div>
+    <div class="builder-actions">
+      <select id="lookback"><option value="6mo">6 months</option><option value="1y" selected>1 year</option><option value="2y">2 years</option><option value="5y">5 years</option></select>
+      <button onclick="analyzeLive()" id="liveBtn">Analyze live data</button>
+      <button class="secondary" onclick="addHoldingRow()">Add holding</button>
+      <span class="status">Weights should add to 100%</span>
     </div>
   </section>
 
@@ -171,8 +193,20 @@ const balanced = {
   }
 };
 function setPayload(obj) { document.getElementById('payload').value = JSON.stringify(obj, null, 2); }
-function resetSample(){ setPayload(aiHeavy); }
-function loadBalanced(){ setPayload(balanced); }
+function resetSample(){ setPayload(aiHeavy); seedHoldings(aiHeavy.holdings); }
+function loadBalanced(){ setPayload(balanced); seedHoldings(balanced.holdings); }
+function holdingRow(ticker='', weight='') {
+  const row = document.createElement('div');
+  row.className = 'holding-input';
+  row.innerHTML = `<input class="ticker" placeholder="Ticker" value="${escapeHtml(ticker)}"><input class="weight" type="number" min="0" max="100" step="0.1" placeholder="%" value="${weight === '' ? '' : (weight * 100).toFixed(weight * 100 % 1 ? 1 : 0)}">`;
+  return row;
+}
+function addHoldingRow(ticker='', weight='') { document.getElementById('holdingGrid').appendChild(holdingRow(ticker, weight)); }
+function seedHoldings(holdings) {
+  const grid = document.getElementById('holdingGrid');
+  grid.innerHTML = '';
+  holdings.forEach(h => addHoldingRow(h.ticker, h.weight));
+}
 resetSample();
 function fmtPct(x, digits=1){ return `${(x*100).toFixed(digits)}%`; }
 function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
@@ -203,6 +237,13 @@ function renderResult(data){
     <div class="section"><h3>Stress tests</h3><div class="stress-grid">${data.stress_tests.map(s => `
       <div class="stress"><div class="stress-top"><span class="stress-name">${escapeHtml(s.scenario)}</span><span class="impact">${fmtPct(s.estimated_impact)}</span></div><p>${escapeHtml(s.rationale)}</p></div>`).join('')}</div></div>
     <div class="section"><h3>Suggestions</h3>${renderList(data.suggestions)}</div>
+    <div class="section"><h3>How this was calculated</h3>${renderList(data.methodology || [])}</div>
+    <div class="section"><h3>Data source</h3>${renderList([
+      `${data.data_source?.type === 'live' ? 'Live adjusted close prices' : 'Inline sample prices'} via ${data.data_source?.provider || 'unknown'}`,
+      `Lookback: ${data.data_source?.lookback_period || 'n/a'}`,
+      `Tickers: ${(data.data_source?.tickers || []).join(', ')}`,
+      `Price points: ${Object.entries(data.data_source?.price_points || {}).map(([k,v]) => `${k} ${v}`).join(', ')}`
+    ])}</div>
     <details><summary>Raw JSON response</summary><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre></details>
   `;
 }
@@ -220,6 +261,32 @@ async function analyze() {
   } catch (err) {
     document.getElementById('output').className = 'results';
     document.getElementById('output').innerHTML = `<div class="section error"><h3>Could not analyze portfolio</h3><p>${escapeHtml(err.message)}</p></div>`;
+    status.textContent = 'Error';
+  } finally { btn.disabled = false; }
+}
+async function analyzeLive() {
+  const status = document.getElementById('status');
+  const btn = document.getElementById('liveBtn');
+  try {
+    const rows = [...document.querySelectorAll('.holding-input')];
+    const holdings = rows.map(row => ({
+      ticker: row.querySelector('.ticker').value.trim().toUpperCase(),
+      weight: Number(row.querySelector('.weight').value) / 100
+    })).filter(h => h.ticker && h.weight > 0);
+    if (!holdings.length) throw new Error('Add at least one ticker and weight.');
+    const total = holdings.reduce((sum, h) => sum + h.weight, 0);
+    if (Math.abs(total - 1) > 0.001) throw new Error(`Weights must add to 100%. Current total: ${(total * 100).toFixed(1)}%.`);
+    const payload = { holdings, lookback_period: document.getElementById('lookback').value };
+    setPayload(payload);
+    status.textContent = 'Fetching live market data…'; btn.disabled = true;
+    const response = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Live analysis failed');
+    renderResult(data);
+    status.textContent = 'Live analysis complete';
+  } catch (err) {
+    document.getElementById('output').className = 'results';
+    document.getElementById('output').innerHTML = `<div class="section error"><h3>Could not analyze live portfolio</h3><p>${escapeHtml(err.message)}</p></div>`;
     status.textContent = 'Error';
   } finally { btn.disabled = false; }
 }

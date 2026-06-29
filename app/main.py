@@ -8,7 +8,7 @@ from app.analysis import analyze_concentration, infer_theme_exposures
 from app.copilot import build_copilot_report
 from app.market_data import fetch_price_history, normalize_inline_prices
 from app.risk import compute_returns, correlation_matrix, portfolio_return_series, risk_metrics
-from app.schemas import PortfolioRequest, PortfolioResponse
+from app.schemas import DataSource, PortfolioRequest, PortfolioResponse
 from app.stress import run_stress_tests
 
 app = FastAPI(title="Portfolio Risk Copilot", version="0.1.0")
@@ -23,7 +23,24 @@ def health() -> dict[str, str]:
 def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
     try:
         tickers = [h.ticker for h in request.holdings]
-        prices = normalize_inline_prices(request.price_history) if request.price_history else fetch_price_history(tickers, request.lookback_period)
+        if request.price_history:
+            prices = normalize_inline_prices(request.price_history)
+            data_source = DataSource(
+                type="inline",
+                provider="user_supplied",
+                lookback_period=request.lookback_period,
+                tickers=tickers,
+                price_points={ticker: len(values) for ticker, values in prices.items()},
+            )
+        else:
+            prices = fetch_price_history(tickers, request.lookback_period)
+            data_source = DataSource(
+                type="live",
+                provider="yfinance",
+                lookback_period=request.lookback_period,
+                tickers=tickers,
+                price_points={ticker: len(values) for ticker, values in prices.items()},
+            )
         returns = compute_returns(prices)
         portfolio_returns = portfolio_return_series(request.holdings, returns)
         metrics = risk_metrics(portfolio_returns, request.risk_free_rate)
@@ -32,6 +49,19 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
         concentration = analyze_concentration(request.holdings, theme_exposures)
         stress_tests = run_stress_tests(request.holdings, theme_exposures)
         report = build_copilot_report(metrics, concentration, stress_tests, theme_exposures)
+        methodology = [
+            (
+                "Fetched adjusted close prices from yfinance for the selected lookback period."
+                if data_source.type == "live"
+                else "Used the inline price history supplied in the request."
+            ),
+            "Converted prices into daily percentage returns for each holding.",
+            "Built portfolio returns as the weighted sum of holding returns.",
+            "Annualized volatility is daily portfolio return volatility multiplied by the square root of 252 trading days.",
+            "Daily 95% VaR is the 5th percentile daily portfolio return; expected shortfall is the average loss beyond that threshold.",
+            "Max drawdown is computed from the cumulative portfolio return curve.",
+            "Stress-test impacts are scenario shocks multiplied by mapped theme exposures.",
+        ]
         return PortfolioResponse(
             summary=report.summary,
             risk_score=report.risk_score,
@@ -41,6 +71,8 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
             correlations=correlations,
             stress_tests=stress_tests,
             suggestions=report.suggestions,
+            methodology=methodology,
+            data_source=data_source,
             report_markdown=report.report_markdown,
         )
     except Exception as exc:

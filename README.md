@@ -13,7 +13,9 @@ API-first portfolio risk copilot for serious portfolio analysis. It accepts hold
 - **Stress tests**: rates spike, AI capex reversal, recession risk-off, USD/liquidity squeeze, oil shock
 - **Plain-English copilot report**: markdown memo with summary, flags, stress tests, and suggestions
 - **FastAPI backend** with `/analyze` and `/health`
-- **Demo UI** at `/`
+- **Live data mode**: omit `price_history` and the API fetches adjusted close prices from `yfinance`
+- **Calculation methodology**: every response explains the data source and how volatility, VaR, expected shortfall, drawdown, correlations, and stress tests were calculated
+- **Demo UI** at `/` with a live ticker/weight portfolio builder
 - **CI + tests** for core behavior
 
 ## Quickstart
@@ -47,6 +49,22 @@ curl -X POST http://127.0.0.1:8000/analyze \
 ```
 
 If `price_history` is omitted, the app fetches prices with `yfinance` using the supplied tickers and `lookback_period`.
+
+Live-data request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "lookback_period": "1y",
+    "holdings": [
+      {"ticker": "AAPL", "weight": 0.50},
+      {"ticker": "MSFT", "weight": 0.50}
+    ]
+  }'
+```
+
+The response includes `data_source` and `methodology` fields so the UI can show exactly where the data came from and how the risk numbers were computed.
 
 ## Response shape
 
