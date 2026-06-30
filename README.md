@@ -13,7 +13,7 @@ API-first portfolio risk copilot for serious portfolio analysis. It accepts hold
 - **Stress tests**: rates spike, AI capex reversal, recession risk-off, USD/liquidity squeeze, oil shock
 - **Plain-English copilot report**: markdown memo with summary, flags, stress tests, and suggestions
 - **FastAPI backend** with `/analyze` and `/health`
-- **Live data mode**: omit `price_history` and the API fetches adjusted close prices from `yfinance`
+- **Live data mode**: omit `price_history` and the API fetches adjusted close prices from `yfinance` with validation, retries, timeouts, short-lived caching, stale-cache fallback warnings, and market-data notices
 - **Calculation methodology**: every response explains the data source and how volatility, VaR, expected shortfall, drawdown, correlations, and stress tests were calculated
 - **Demo UI** at `/` with a live ticker/weight portfolio builder
 - **CI + tests** for core behavior
@@ -64,7 +64,7 @@ curl -X POST http://127.0.0.1:8000/analyze \
   }'
 ```
 
-The response includes `data_source` and `methodology` fields so the UI can show exactly where the data came from and how the risk numbers were computed.
+The response includes `data_source` and `methodology` fields so the UI can show exactly where the data came from and how the risk numbers were computed. Live-data responses may also include `data_source.warnings` and `data_source.stale` when the app serves cached data or yfinance returns uneven/partial data.
 
 ## Response shape
 
@@ -89,6 +89,16 @@ The response includes `data_source` and `methodology` fields so the UI can show 
   "correlations": {"NVDA": {"NVDA": 1.0, "TLT": -0.4}},
   "stress_tests": [{"scenario": "AI capex sentiment reverses", "estimated_impact": -0.11, "rationale": "..."}],
   "suggestions": ["Reduce top-three concentration or add assets with genuinely different drivers."],
+  "data_source": {
+    "type": "live",
+    "provider": "yfinance",
+    "lookback_period": "1y",
+    "tickers": ["AAPL", "MSFT"],
+    "price_points": {"AAPL": 252, "MSFT": 252},
+    "warnings": [],
+    "stale": false,
+    "fetched_at": "2026-06-30T12:00:00Z"
+  },
   "report_markdown": "# Portfolio Risk Copilot Report..."
 }
 ```
@@ -100,6 +110,7 @@ Most portfolio dashboards show numbers without interpretation. Portfolio Risk Co
 ## Development
 
 ```bash
+ruff check .
 pytest -q
 ```
 

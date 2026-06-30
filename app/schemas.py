@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -63,6 +64,15 @@ class DataSource(BaseModel):
     lookback_period: str
     tickers: List[str]
     price_points: Dict[str, int]
+    warnings: List[str] = Field(default_factory=list)
+    stale: bool = False
+    fetched_at: Optional[datetime] = None
+
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    retryable: bool = False
 
 
 class PortfolioResponse(BaseModel):

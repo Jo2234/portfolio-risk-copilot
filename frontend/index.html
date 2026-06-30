@@ -103,6 +103,7 @@
     summary { cursor:pointer; color: var(--soft); font-weight:600; font-size:13px; }
     pre { overflow:auto; max-height: 360px; white-space: pre-wrap; color:#d8e2f3; font:12px/1.55 'JetBrains Mono', monospace; }
     .error { border-color: rgba(248,113,113,.35); color: #fecaca; background: rgba(248,113,113,.08); }
+    .warning { border-color: rgba(245,158,11,.35); color: #fde68a; background: rgba(245,158,11,.08); }
     @media (max-width: 980px) { .hero, .workspace, .score-wrap { grid-template-columns: 1fr; } .cards, .stress-grid, .holding-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 620px) { main { width: min(100vw - 24px, 1180px); padding-top:18px; } nav { margin-bottom: 34px; } .cards, .stress-grid, .mini-grid, .holding-grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } h1 { font-size: 42px; } }
   </style>
@@ -216,6 +217,7 @@ function renderBars(exposures){
 function renderResult(data){
   const m = data.metrics;
   const worst = data.stress_tests.reduce((a,b) => a.estimated_impact < b.estimated_impact ? a : b);
+  const dataWarnings = data.data_source?.warnings || [];
   document.getElementById('outputHint').textContent = `Risk score ${data.risk_score}/100`;
   document.getElementById('output').className = 'results';
   document.getElementById('output').innerHTML = `
@@ -234,15 +236,25 @@ function renderResult(data){
     <div class="section"><h3>Stress tests</h3><div class="stress-grid">${data.stress_tests.map(s => `
       <div class="stress"><div class="stress-top"><span class="stress-name">${escapeHtml(s.scenario)}</span><span class="impact">${fmtPct(s.estimated_impact)}</span></div><p>${escapeHtml(s.rationale)}</p></div>`).join('')}</div></div>
     <div class="section"><h3>Suggestions</h3>${renderList(data.suggestions)}</div>
+    ${dataWarnings.length ? `<div class="section warning"><h3>Market-data notices</h3>${renderList(dataWarnings)}</div>` : ''}
     <div class="section"><h3>How this was calculated</h3>${renderList(data.methodology || [])}</div>
     <div class="section"><h3>Data source</h3>${renderList([
       `${data.data_source?.type === 'live' ? 'Live adjusted close prices' : 'Inline sample prices'} via ${data.data_source?.provider || 'unknown'}`,
       `Lookback: ${data.data_source?.lookback_period || 'n/a'}`,
+      `Freshness: ${data.data_source?.stale ? 'stale cache fallback' : 'fresh or inline'}`,
       `Tickers: ${(data.data_source?.tickers || []).join(', ')}`,
       `Price points: ${Object.entries(data.data_source?.price_points || {}).map(([k,v]) => `${k} ${v}`).join(', ')}`
     ])}</div>
     <details><summary>Raw JSON response</summary><pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre></details>
   `;
+}
+function errorMessage(data, fallback){
+  const detail = data?.detail;
+  if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+    return `${detail.message || fallback}${detail.code ? ` (${detail.code})` : ''}${detail.retryable ? ' Try again shortly.' : ''}`;
+  }
+  if (Array.isArray(detail)) return detail.map(item => item.msg || item.message || JSON.stringify(item)).join('; ');
+  return detail || fallback;
 }
 async function analyze() {
   const status = document.getElementById('status');
@@ -252,7 +264,7 @@ async function analyze() {
     const payload = JSON.parse(document.getElementById('payload').value);
     const response = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Analysis failed');
+    if (!response.ok) throw new Error(errorMessage(data, 'Analysis failed'));
     renderResult(data);
     status.textContent = 'Analysis complete';
   } catch (err) {
@@ -278,7 +290,7 @@ async function analyzeLive() {
     status.textContent = 'Fetching live market data…'; btn.disabled = true;
     const response = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Live analysis failed');
+    if (!response.ok) throw new Error(errorMessage(data, 'Live analysis failed'));
     renderResult(data);
     status.textContent = 'Live analysis complete';
   } catch (err) {
