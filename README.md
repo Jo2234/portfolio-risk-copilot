@@ -6,11 +6,11 @@ API-first portfolio risk copilot for serious portfolio analysis. It accepts hold
 
 ## Features
 
-- **Portfolio risk metrics**: annualized volatility, daily 95% VaR, daily 95% expected shortfall, max drawdown, Sharpe-like ratio
-- **Concentration analysis**: largest holding, top-three weight, effective number of positions, concentration flags
-- **Correlation map**: pairwise holding correlations from return history
+- **Portfolio risk metrics**: annualized volatility, daily 95% VaR, daily 95% expected shortfall, max drawdown, Sharpe-like and Sortino-like ratios
+- **Concentration analysis**: largest holding, top-three/top-five weight, HHI, effective number of positions, concentration flags
+- **Correlation and variance map**: pairwise holding correlations, average pairwise correlation, and marginal contribution to portfolio variance
 - **Theme exposure detection**: AI mega-cap tech, semiconductors, long-duration bonds, gold, broad US equity, crypto proxy, energy/oil
-- **Stress tests**: rates spike, AI capex reversal, recession risk-off, USD/liquidity squeeze, oil shock
+- **Stress tests**: rates spike, AI capex reversal, recession risk-off, USD/liquidity squeeze, oil shock, regional banking stress
 - **Plain-English copilot report**: markdown memo with summary, flags, stress tests, and suggestions
 - **FastAPI backend** with `/analyze` and `/health`
 - **Live data mode**: omit `price_history` and the API fetches adjusted close prices from `yfinance` with validation, retries, timeouts, short-lived caching, stale-cache fallback warnings, and market-data notices
@@ -77,16 +77,23 @@ The response includes `data_source` and `methodology` fields so the UI can show 
     "value_at_risk_95": -0.025,
     "expected_shortfall_95": -0.041,
     "max_drawdown": -0.22,
-    "sharpe_ratio": 0.8
+    "sharpe_ratio": 0.8,
+    "sortino_ratio": 1.1
   },
   "concentration": {
+    "largest_holding_ticker": "NVDA",
     "top_holding_weight": 0.5,
     "top_three_weight": 1.0,
+    "top_five_weight": 1.0,
+    "herfindahl_index": 0.38,
+    "number_of_positions": 3,
     "effective_number_of_positions": 2.63,
     "flags": ["Largest holding is 50%, above a typical 25% single-name risk guardrail"]
   },
   "theme_exposures": {"ai_mega_cap_tech": 0.5, "long_duration_bonds": 0.3, "gold_defensive": 0.2},
   "correlations": {"NVDA": {"NVDA": 1.0, "TLT": -0.4}},
+  "average_pairwise_correlation": -0.12,
+  "risk_contributions": [{"ticker": "NVDA", "weight": 0.5, "risk_contribution_pct": 0.72, "annualized_volatility": 0.36}],
   "stress_tests": [{"scenario": "AI capex sentiment reverses", "estimated_impact": -0.11, "rationale": "..."}],
   "suggestions": ["Reduce top-three concentration or add assets with genuinely different drivers."],
   "data_source": {
@@ -106,6 +113,10 @@ The response includes `data_source` and `methodology` fields so the UI can show 
 ## Why this project exists
 
 Most portfolio dashboards show numbers without interpretation. Portfolio Risk Copilot keeps the calculations transparent while converting them into a concise risk memo that a human investor can actually act on.
+
+## Consolidated
+
+This keeper repo absorbed the older `portfolio-risk-engine`'s marginal variance-contribution analytics, Sortino-style downside metric, HHI concentration detail, average pairwise correlation, duplicate-holding guardrail, regional-banking stress scenario, and computed risk-driver commentary. Its seeded demo data and overlapping stateful portfolio/report endpoints were intentionally not copied.
 
 ## Development
 

@@ -27,6 +27,10 @@ class PortfolioRequest(BaseModel):
         total = sum(h.weight for h in self.holdings)
         if abs(total - 1.0) > 0.001:
             raise ValueError(f"holding weights must sum to 1.0; got {total:.4f}")
+        tickers = [holding.ticker for holding in self.holdings]
+        duplicates = sorted({ticker for ticker in tickers if tickers.count(ticker) > 1})
+        if duplicates:
+            raise ValueError(f"duplicate holdings are not allowed: {', '.join(duplicates)}")
         return self
 
 
@@ -36,13 +40,25 @@ class RiskMetrics(BaseModel):
     expected_shortfall_95: float
     max_drawdown: float
     sharpe_ratio: float
+    sortino_ratio: float
 
 
 class ConcentrationAnalysis(BaseModel):
+    largest_holding_ticker: str
     top_holding_weight: float
     top_three_weight: float
+    top_five_weight: float
+    herfindahl_index: float
+    number_of_positions: int
     effective_number_of_positions: float
     flags: List[str]
+
+
+class RiskContribution(BaseModel):
+    ticker: str
+    weight: float
+    risk_contribution_pct: float
+    annualized_volatility: float
 
 
 class StressScenarioResult(BaseModel):
@@ -82,6 +98,8 @@ class PortfolioResponse(BaseModel):
     concentration: ConcentrationAnalysis
     theme_exposures: Dict[str, float]
     correlations: Dict[str, Dict[str, float]]
+    average_pairwise_correlation: float
+    risk_contributions: List[RiskContribution]
     stress_tests: List[StressScenarioResult]
     suggestions: List[str]
     methodology: List[str]

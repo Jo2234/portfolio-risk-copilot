@@ -14,6 +14,8 @@ THEME_MAP = {
     "broad_us_equity": {"SPY", "VOO", "IVV", "VTI", "QQQ", "DIA", "IWM"},
     "crypto_proxy": {"BTC", "ETH", "COIN", "MSTR", "IBIT", "FBTC", "ETHE"},
     "energy_oil": {"XLE", "USO", "XOM", "CVX", "OXY", "COP"},
+    "financials": {"JPM", "BAC", "WFC", "C", "GS", "MS", "KRE", "XLF", "SCHW"},
+    "small_cap_equity": {"IWM", "VTWO", "VB", "SCHA"},
 }
 
 
@@ -50,8 +52,12 @@ def analyze_concentration(holdings: List[Holding], theme_exposures: Dict[str, fl
         flags.append("No major concentration flags detected")
 
     return ConcentrationAnalysis(
+        largest_holding_ticker=ordered[0].ticker,
         top_holding_weight=round(top_holding, 6),
         top_three_weight=round(top_three, 6),
+        top_five_weight=round(sum(h.weight for h in ordered[:5]), 6),
+        herfindahl_index=round(sum(h.weight ** 2 for h in holdings), 6),
+        number_of_positions=len(holdings),
         effective_number_of_positions=round(effective_n, 2),
         flags=flags,
     )

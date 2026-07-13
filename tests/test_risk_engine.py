@@ -1,7 +1,16 @@
 
 import math
 
-from app.risk import compute_returns, portfolio_return_series, risk_metrics, correlation_matrix
+import pytest
+
+from app.risk import (
+    average_pairwise_correlation,
+    compute_returns,
+    correlation_matrix,
+    portfolio_return_series,
+    risk_contributions,
+    risk_metrics,
+)
 from app.schemas import Holding, PortfolioRequest
 
 
@@ -21,6 +30,7 @@ def test_risk_metrics_calculates_volatility_var_expected_shortfall_and_drawdown(
     assert metrics.expected_shortfall_95 <= metrics.value_at_risk_95
     assert metrics.max_drawdown <= 0
     assert math.isfinite(metrics.sharpe_ratio)
+    assert math.isfinite(metrics.sortino_ratio)
 
 
 def test_correlation_matrix_uses_real_return_relationships():
@@ -34,3 +44,18 @@ def test_correlation_matrix_uses_real_return_relationships():
 
     assert matrix["AAA"]["BBB"] > 0.99
     assert matrix["AAA"]["CCC"] < -0.99
+    assert average_pairwise_correlation(compute_returns(prices)) == pytest.approx(-1 / 3, abs=0.001)
+
+
+def test_risk_contributions_allocate_portfolio_variance_across_holdings():
+    prices = {
+        "AAA": [100, 104, 102, 108, 103, 110],
+        "BBB": [100, 101, 100, 102, 101, 103],
+    }
+    holdings = [Holding(ticker="AAA", weight=0.6), Holding(ticker="BBB", weight=0.4)]
+
+    contributions = risk_contributions(holdings, compute_returns(prices))
+
+    assert contributions[0].ticker == "AAA"
+    assert sum(row.risk_contribution_pct for row in contributions) == pytest.approx(1.0, abs=1e-6)
+    assert all(row.annualized_volatility >= 0 for row in contributions)

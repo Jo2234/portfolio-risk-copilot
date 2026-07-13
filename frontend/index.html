@@ -123,7 +123,7 @@
     <div class="hero-card">
       <div class="mini-grid">
         <div class="mini"><span>Engine</span><strong>API-first</strong></div>
-        <div class="mini"><span>Scenarios</span><strong>5 stress tests</strong></div>
+        <div class="mini"><span>Scenarios</span><strong>6 stress tests</strong></div>
         <div class="mini"><span>Output</span><strong>Risk memo</strong></div>
         <div class="mini"><span>Data</span><strong>Inline or live</strong></div>
       </div>
@@ -230,8 +230,11 @@ function renderResult(data){
       <div class="metric"><span>Daily VaR 95%</span><strong>${fmtPct(m.value_at_risk_95,2)}</strong></div>
       <div class="metric"><span>Max drawdown</span><strong>${fmtPct(m.max_drawdown)}</strong></div>
       <div class="metric"><span>Worst stress</span><strong>${fmtPct(worst.estimated_impact)}</strong></div>
+      <div class="metric"><span>Sortino-like ratio</span><strong>${m.sortino_ratio.toFixed(2)}</strong></div>
+      <div class="metric"><span>Average correlation</span><strong>${data.average_pairwise_correlation.toFixed(2)}</strong></div>
     </div>
     <div class="section"><h3>Concentration flags</h3>${renderList(data.concentration.flags)}</div>
+    <div class="section"><h3>Variance risk contribution</h3>${renderList(data.risk_contributions.map(row => `${row.ticker}: ${fmtPct(row.risk_contribution_pct)} of portfolio variance`))}</div>
     <div class="section"><h3>Theme exposures</h3>${renderBars(data.theme_exposures)}</div>
     <div class="section"><h3>Stress tests</h3><div class="stress-grid">${data.stress_tests.map(s => `
       <div class="stress"><div class="stress-top"><span class="stress-name">${escapeHtml(s.scenario)}</span><span class="impact">${fmtPct(s.estimated_impact)}</span></div><p>${escapeHtml(s.rationale)}</p></div>`).join('')}</div></div>

@@ -42,6 +42,14 @@ SCENARIO_SHOCKS = {
         "long_duration_bonds": -0.04,
         "idiosyncratic_or_unmapped": -0.05,
     },
+    "Regional banking stress": {
+        "financials": -0.18,
+        "small_cap_equity": -0.10,
+        "broad_us_equity": -0.05,
+        "long_duration_bonds": 0.04,
+        "gold_defensive": 0.03,
+        "idiosyncratic_or_unmapped": -0.03,
+    },
 }
 
 

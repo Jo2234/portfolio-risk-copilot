@@ -13,7 +13,14 @@ from app.market_data import (
     fetch_price_history_with_metadata,
     normalize_inline_prices,
 )
-from app.risk import compute_returns, correlation_matrix, portfolio_return_series, risk_metrics
+from app.risk import (
+    average_pairwise_correlation,
+    compute_returns,
+    correlation_matrix,
+    portfolio_return_series,
+    risk_contributions,
+    risk_metrics,
+)
 from app.schemas import DataSource, ErrorResponse, PortfolioRequest, PortfolioResponse
 from app.stress import run_stress_tests
 
@@ -74,11 +81,14 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
         returns = compute_returns(prices)
         portfolio_returns = portfolio_return_series(request.holdings, returns)
         metrics = risk_metrics(portfolio_returns, request.risk_free_rate)
-        correlations = correlation_matrix(returns[[h.ticker for h in request.holdings]])
+        holding_returns = returns[[h.ticker for h in request.holdings]]
+        correlations = correlation_matrix(holding_returns)
+        pairwise_correlation = average_pairwise_correlation(holding_returns)
+        contribution_rows = risk_contributions(request.holdings, holding_returns)
         theme_exposures = infer_theme_exposures(request.holdings)
         concentration = analyze_concentration(request.holdings, theme_exposures)
         stress_tests = run_stress_tests(request.holdings, theme_exposures)
-        report = build_copilot_report(metrics, concentration, stress_tests, theme_exposures)
+        report = build_copilot_report(metrics, concentration, stress_tests, theme_exposures, contribution_rows)
         methodology = [
             (
                 "Fetched adjusted close prices from yfinance for the selected lookback period."
@@ -91,6 +101,8 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
             "Annualized volatility is daily portfolio return volatility multiplied by the square root of 252 trading days.",
             "Daily 95% VaR is the 5th percentile daily portfolio return; expected shortfall is the average loss beyond that threshold.",
             "Max drawdown is computed from the cumulative portfolio return curve.",
+            "Risk contribution allocates annualized portfolio variance across holdings using the covariance matrix.",
+            "Average pairwise correlation is the mean correlation across each unique pair of holdings.",
             "Stress-test impacts are scenario shocks multiplied by mapped theme exposures.",
         ]
         return PortfolioResponse(
@@ -100,6 +112,8 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
             concentration=concentration,
             theme_exposures=theme_exposures,
             correlations=correlations,
+            average_pairwise_correlation=pairwise_correlation,
+            risk_contributions=contribution_rows,
             stress_tests=stress_tests,
             suggestions=report.suggestions,
             methodology=methodology,

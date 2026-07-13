@@ -26,9 +26,14 @@ def test_api_analyze_accepts_inline_prices_and_returns_full_report():
     assert data["risk_score"] >= 0
     assert data["metrics"]["volatility"] > 0
     assert data["correlations"]["NVDA"]["TLT"] is not None
+    assert isinstance(data["average_pairwise_correlation"], float)
+    assert data["risk_contributions"][0]["ticker"] in {"NVDA", "TLT", "GLD"}
+    assert data["metrics"]["sortino_ratio"] is not None
+    assert data["concentration"]["herfindahl_index"] == 0.38
     assert data["stress_tests"]
     assert data["data_source"]["type"] == "inline"
     assert any("Annualized volatility" in step for step in data["methodology"])
+    assert any("Risk contribution" in step for step in data["methodology"])
     assert data["report_markdown"].startswith("# Portfolio Risk Copilot Report")
 
 
