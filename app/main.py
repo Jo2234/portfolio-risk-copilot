@@ -47,11 +47,13 @@ async def market_data_error_handler(request: Request, exc: MarketDataError) -> J
     )
 
 
+@app.get("/api/health", include_in_schema=False)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/api/analyze", response_model=PortfolioResponse, include_in_schema=False)
 @app.post("/analyze", response_model=PortfolioResponse)
 def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
     try:
