@@ -26,6 +26,15 @@ from app.stress import run_stress_tests
 
 app = FastAPI(title="Portfolio Risk Copilot", version="0.1.0")
 
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://johan-vaz-site.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
 
 def api_error(code: str, message: str, *, status_code: int = 400, retryable: bool = False) -> HTTPException:
     return HTTPException(status_code=status_code, detail=ErrorResponse(code=code, message=message, retryable=retryable).model_dump())
