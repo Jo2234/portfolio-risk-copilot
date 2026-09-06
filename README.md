@@ -128,3 +128,7 @@ pytest -q
 ## Disclaimer
 
 Educational software only. Not financial advice.
+
+### Session alignment and input validation
+
+Inline prices must be finite, strictly positive, and have the same number of observations for every ticker. Each row must describe the same daily session across holdings. Live downloads retain their date index and missing observations. A return is included only when every holding has valid prices on both adjacent provider sessions; missing prices are never filled and gaps are never treated as one-day moves. At least two common daily returns are required. Warnings identify excluded gaps, and `price_points` counts valid observations per ticker. Metrics describe the retained return sample, so gaps can limit the cumulative return/drawdown interpretation. Drawdown includes the starting portfolio wealth before the first return.

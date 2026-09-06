@@ -59,3 +59,14 @@ def test_risk_contributions_allocate_portfolio_variance_across_holdings():
     assert contributions[0].ticker == "AAA"
     assert sum(row.risk_contribution_pct for row in contributions) == pytest.approx(1.0, abs=1e-6)
     assert all(row.annualized_volatility >= 0 for row in contributions)
+
+
+@pytest.mark.parametrize(
+    ("returns", "expected"),
+    [([-.5, .1], -.5), ([-.1, -.1], -.19), ([-.5, 1.2], -.5), ([.1, -.2], -.2), ([.1, .2], 0)],
+)
+def test_drawdown_includes_initial_wealth(returns, expected):
+    import pandas as pd
+    from app.risk import max_drawdown_from_returns
+
+    assert max_drawdown_from_returns(pd.Series(returns)) == pytest.approx(expected)

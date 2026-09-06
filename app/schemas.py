@@ -20,7 +20,7 @@ class PortfolioRequest(BaseModel):
     holdings: List[Holding] = Field(..., min_length=1)
     lookback_period: str = Field("2y", description="Period passed to yfinance when price_history is omitted")
     price_history: Optional[Dict[str, List[float]]] = Field(None, description="Optional inline prices for deterministic analysis")
-    risk_free_rate: float = 0.0
+    risk_free_rate: float = Field(0.0, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def validate_weights(self):
