@@ -17,6 +17,9 @@ dependencies = [
   "yfinance>=0.2.40"
 ]
 
+[tool.vercel]
+entrypoint = "app.main:app"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.2", "httpx>=0.27", "ruff>=0.6", "uvicorn[standard]>=0.30"]
 

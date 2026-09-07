@@ -1,6 +1,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.responses import HTMLResponse
@@ -143,5 +145,5 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
 
 @app.get("/", response_class=HTMLResponse)
 def demo_page() -> str:
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    frontend = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+    return frontend.read_text(encoding="utf-8")
