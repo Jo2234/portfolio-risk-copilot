@@ -76,3 +76,48 @@ def test_fetch_price_history_keeps_backwards_compatible_dict_return():
 
     # Public compatibility wrapper still returns only price dictionaries.
     assert fetch_price_history(["AAA"], "compat-test") == {"AAA": [100.0, 101.0, 102.0]}
+
+
+def test_live_returns_keep_dates_and_do_not_bridge_missing_sessions():
+    from app.risk import compute_returns
+
+    dates = pd.date_range("2026-01-01", periods=7)
+    data = pd.DataFrame(
+        {("Close", "AAA"): [100, None, 110, 121, 120, 126, 120],
+         ("Close", "BBB"): [100, 110, 121, None, 80, 88, 80]},
+        index=dates,
+    )
+    result = fetch_price_history_with_metadata(
+        ["AAA", "BBB"], "dated-gaps", downloader=lambda *args, **kwargs: data
+    )
+    returns = compute_returns(result.price_frame())
+
+    assert returns.index.tolist() == dates[-2:].tolist()
+    assert returns["AAA"].tolist() == pytest.approx([126 / 120 - 1, 120 / 126 - 1])
+    assert returns["BBB"].tolist() == pytest.approx([88 / 80 - 1, 80 / 88 - 1])
+    assert result.warnings
+    cached = fetch_price_history_with_metadata(["AAA", "BBB"], "dated-gaps")
+    pd.testing.assert_frame_equal(cached.price_frame(), result.price_frame())
+
+
+def test_live_returns_align_a_shorter_listing_history():
+    from app.risk import compute_returns
+
+    dates = pd.date_range("2026-01-01", periods=5)
+    data = pd.DataFrame(
+        {("Close", "AAA"): [100, 110, 121, 120, 130],
+         ("Close", "BBB"): [None, None, 50, 55, 54]}, index=dates
+    )
+    result = fetch_price_history_with_metadata(
+        ["AAA", "BBB"], "new-listing", downloader=lambda *args, **kwargs: data
+    )
+    returns = compute_returns(result.price_frame())
+    assert returns.index.tolist() == dates[-2:].tolist()
+    assert returns["BBB"].tolist() == pytest.approx([.1, 54 / 55 - 1])
+
+
+def test_inline_prices_require_equal_session_counts():
+    from app.market_data import normalize_inline_prices
+
+    with pytest.raises(MarketDataValidationError, match="equal lengths"):
+        normalize_inline_prices({"AAA": [100, 110, 121], "BBB": [50, 55, 54, 56]})

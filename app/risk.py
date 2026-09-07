@@ -11,16 +11,15 @@ from app.schemas import Holding, RiskContribution, RiskMetrics
 TRADING_DAYS = 252
 
 
-def compute_returns(price_history: Dict[str, Iterable[float]]) -> pd.DataFrame:
-    if not price_history:
+def compute_returns(price_history: Dict[str, Iterable[float]] | pd.DataFrame) -> pd.DataFrame:
+    if len(price_history) == 0:
         raise ValueError("price history is required")
-    frame = pd.DataFrame({ticker.upper(): list(values) for ticker, values in price_history.items()})
-    frame = frame.astype(float).dropna(axis=0, how="any")
+    frame = pd.DataFrame(price_history).rename(columns=str.upper).astype(float)
     if len(frame) < 3:
         raise ValueError("at least three price observations are required")
-    returns = frame.pct_change().dropna(how="any")
-    if returns.empty:
-        raise ValueError("not enough price variation to compute returns")
+    returns = frame.pct_change(fill_method=None).dropna(how="any")
+    if len(returns) < 2:
+        raise ValueError("at least two common one-session returns are required after aligning price gaps")
     return returns
 
 
@@ -34,7 +33,7 @@ def portfolio_return_series(holdings: List[Holding], returns: pd.DataFrame) -> p
 
 def max_drawdown_from_returns(returns: pd.Series) -> float:
     cumulative = (1 + returns).cumprod()
-    running_max = cumulative.cummax()
+    running_max = cumulative.cummax().clip(lower=1.0)
     drawdowns = cumulative / running_max - 1
     return float(drawdowns.min())
 

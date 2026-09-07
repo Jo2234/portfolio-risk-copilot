@@ -92,3 +92,36 @@ def test_api_uses_structured_error_detail_for_analysis_errors():
     detail = response.json()["detail"]
     assert detail["code"] == "market_data_validation_failed"
     assert detail["retryable"] is False
+
+
+def test_api_reports_initial_loss_as_drawdown():
+    response = TestClient(app).post("/analyze", json={
+        "holdings": [{"ticker": "AAA", "weight": 1.0}],
+        "price_history": {"AAA": [100, 50, 55]},
+    })
+    assert response.status_code == 200
+    assert response.json()["metrics"]["max_drawdown"] == -.5
+
+
+def test_api_rejects_nonpositive_and_nonfinite_inline_prices_before_analysis():
+    import json
+
+    client = TestClient(app)
+    for price in [0, -50, float("inf"), float("nan")]:
+        payload = {"holdings": [{"ticker": "AAA", "weight": 1.0}],
+                   "price_history": {"AAA": [100, price, 110]}}
+        response = client.post("/analyze", content=json.dumps(payload), headers={"Content-Type": "application/json"})
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert detail["code"] == "market_data_validation_failed"
+        assert "AAA price at observation 1" in detail["message"]
+
+
+def test_risk_free_rate_must_be_finite():
+    import pytest
+    from pydantic import ValidationError
+    from app.schemas import PortfolioRequest
+
+    for rate in [float("inf"), float("-inf"), float("nan")]:
+        with pytest.raises(ValidationError, match="finite"):
+            PortfolioRequest(holdings=[{"ticker": "AAA", "weight": 1}], risk_free_rate=rate)

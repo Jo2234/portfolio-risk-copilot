@@ -69,6 +69,7 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
         tickers = [h.ticker for h in request.holdings]
         if request.price_history:
             prices = normalize_inline_prices(request.price_history)
+            return_prices = prices
             data_source = DataSource(
                 type="inline",
                 provider="user_supplied",
@@ -79,17 +80,18 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
         else:
             live_data = fetch_price_history_with_metadata(tickers, request.lookback_period)
             prices = live_data.prices
+            return_prices = live_data.price_frame()
             data_source = DataSource(
                 type="live",
                 provider="yfinance",
                 lookback_period=request.lookback_period,
                 tickers=tickers,
-                price_points={ticker: len(values) for ticker, values in prices.items()},
+                price_points={ticker: int(return_prices[ticker].notna().sum()) for ticker in tickers},
                 warnings=live_data.warnings,
                 stale=live_data.stale,
                 fetched_at=live_data.fetched_at,
             )
-        returns = compute_returns(prices)
+        returns = compute_returns(return_prices)
         portfolio_returns = portfolio_return_series(request.holdings, returns)
         metrics = risk_metrics(portfolio_returns, request.risk_free_rate)
         holding_returns = returns[[h.ticker for h in request.holdings]]
@@ -107,7 +109,7 @@ def analyze_portfolio(request: PortfolioRequest) -> PortfolioResponse:
                 else "Used the inline price history supplied in the request."
             ),
             *(["Market-data warning: " + warning for warning in data_source.warnings] if data_source.warnings else []),
-            "Converted prices into daily percentage returns for each holding.",
+            "Converted prices into daily percentage returns for each holding. Live returns use matching adjacent provider sessions, without filling gaps; inline rows must represent the same sessions.",
             "Built portfolio returns as the weighted sum of holding returns.",
             "Annualized volatility is daily portfolio return volatility multiplied by the square root of 252 trading days.",
             "Daily 95% VaR is the 5th percentile daily portfolio return; expected shortfall is the average loss beyond that threshold.",

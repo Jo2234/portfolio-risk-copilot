@@ -40,6 +40,11 @@ class MarketDataResult:
     warnings: List[str] = field(default_factory=list)
     fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     stale: bool = False
+    dates: pd.Index | None = None
+
+    def price_frame(self) -> pd.DataFrame:
+        """Retain the provider session index, including gaps, for return alignment."""
+        return pd.DataFrame(self.prices, index=self.dates)
 
 
 @dataclass(frozen=True)
@@ -96,6 +101,7 @@ def fetch_price_history_with_metadata(
             warnings=[*cached.result.warnings, "Served market data from a short-lived in-memory cache."],
             fetched_at=cached.result.fetched_at,
             stale=False,
+            dates=cached.result.dates,
         )
 
     yf_download = downloader or _yfinance_download
@@ -111,14 +117,12 @@ def fetch_price_history_with_metadata(
                 threads=False,
                 timeout=timeout,
             )
-            prices, warnings = _prices_from_download(data, normalized_tickers)
-            _validate_prices(prices, normalized_tickers)
-            lengths = {ticker: len(values) for ticker, values in prices.items()}
-            if len(set(lengths.values())) > 1:
-                warnings.append(
-                    "Live price histories have different lengths after cleaning; returns are aligned on complete rows."
-                )
-            result = MarketDataResult(prices=prices, warnings=warnings, fetched_at=now)
+            frame, warnings = _prices_from_download(data, normalized_tickers)
+            prices = frame.to_dict("list")
+            _validate_prices(prices, normalized_tickers, allow_missing=True)
+            result = MarketDataResult(
+                prices=prices, dates=frame.index, warnings=warnings, fetched_at=now
+            )
             _PRICE_CACHE[cache_key] = _CacheEntry(result=result, created_at=now)
             return result
         except Exception as exc:  # yfinance raises a mix of requests/pandas errors
@@ -135,6 +139,7 @@ def fetch_price_history_with_metadata(
             ],
             fetched_at=cached.result.fetched_at,
             stale=True,
+            dates=cached.result.dates,
         )
 
     message = str(last_error) if last_error else "unknown yfinance error"
@@ -149,38 +154,30 @@ def _yfinance_download(*args, **kwargs) -> pd.DataFrame:
     return yf.download(*args, **kwargs)
 
 
-def _prices_from_download(data: pd.DataFrame, tickers: Sequence[str]) -> tuple[Dict[str, List[float]], List[str]]:
+def _prices_from_download(data: pd.DataFrame, tickers: Sequence[str]) -> tuple[pd.DataFrame, List[str]]:
     if data is None or data.empty:
         raise MarketDataUnavailableError("yfinance returned no price data")
 
     close = _close_prices(data)
-    warnings: List[str] = []
-    prices: Dict[str, List[float]] = {}
-
-    if len(tickers) == 1 and isinstance(close, pd.Series):
-        values = _clean_series(close)
-        if values:
-            prices[tickers[0]] = values
-    else:
-        if isinstance(close, pd.Series):
+    if isinstance(close, pd.Series):
+        if len(tickers) != 1:
             raise MarketDataValidationError("expected per-ticker close prices but received a single series")
-        close = close.dropna(how="all")
-        for ticker in tickers:
-            if ticker not in close.columns:
-                warnings.append(f"No close-price column returned for {ticker}.")
-                continue
-            values = _clean_series(close[ticker])
-            if len(values) < MIN_PRICE_POINTS:
-                warnings.append(f"Insufficient price observations for {ticker}; received {len(values)}.")
-                continue
-            prices[ticker] = values
-
-    missing = [ticker for ticker in tickers if ticker not in prices]
+        close = close.to_frame(name=tickers[0])
+    missing = [ticker for ticker in tickers if ticker not in close.columns]
     if missing:
-        warnings.append(f"Missing usable market data for: {', '.join(missing)}.")
-    if prices and missing:
-        warnings.append("Analysis uses a partial live-data set; risk results may exclude failed tickers.")
-    return prices, warnings
+        raise MarketDataValidationError(f"missing price history for: {', '.join(missing)}")
+    if not close.index.is_unique:
+        raise MarketDataValidationError("market data contains duplicate observation dates")
+    close = close.loc[:, list(tickers)].sort_index().apply(pd.to_numeric, errors="coerce").astype(float)
+    valid = close.gt(0) & close.lt(math.inf)
+    warnings = []
+    if not valid.all().all():
+        warnings.append(
+            "Missing or invalid live prices were retained as gaps. Only returns with valid prices "
+            "for every holding on both adjacent provider sessions are included; no prices are filled."
+        )
+    # Do not drop rows: that would turn a gap into an apparent one-session return.
+    return close.where(valid), warnings
 
 
 def _close_prices(data: pd.DataFrame) -> pd.Series | pd.DataFrame:
@@ -189,17 +186,27 @@ def _close_prices(data: pd.DataFrame) -> pd.Series | pd.DataFrame:
     return data["Close"]
 
 
-def _clean_series(series: pd.Series) -> List[float]:
-    values = pd.to_numeric(series, errors="coerce").dropna().astype(float).tolist()
-    return [value for value in values if math.isfinite(value) and value > 0]
-
-
-def _validate_prices(prices: Mapping[str, Iterable[float]], tickers: Sequence[str]) -> None:
+def _validate_prices(
+    prices: Mapping[str, Iterable[float]], tickers: Sequence[str], *, allow_missing: bool = False
+) -> None:
     missing = [ticker for ticker in tickers if ticker.upper() not in prices]
     if missing:
         raise MarketDataValidationError(f"missing price history for: {', '.join(missing)}")
-    lengths = {ticker: len(list(values)) for ticker, values in prices.items()}
+    lengths = {}
+    for ticker, values in prices.items():
+        count = 0
+        for index, value in enumerate(values):
+            if allow_missing and math.isnan(value):
+                continue
+            if not math.isfinite(value) or value <= 0:
+                raise MarketDataValidationError(
+                    f"{ticker} price at observation {index} must be finite and greater than zero"
+                )
+            count += 1
+        lengths[ticker] = count
     short = {ticker: count for ticker, count in lengths.items() if count < MIN_PRICE_POINTS}
     if short:
         details = ", ".join(f"{ticker} has {count}" for ticker, count in short.items())
         raise MarketDataValidationError(f"at least {MIN_PRICE_POINTS} price observations are required; {details}")
+    if not allow_missing and len(set(lengths.values())) > 1:
+        raise MarketDataValidationError("inline price histories must have equal lengths on the same sessions")
