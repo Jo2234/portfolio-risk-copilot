@@ -2,8 +2,6 @@
 
 API-first portfolio risk copilot for serious portfolio analysis. It accepts holdings, fetches or receives price history, calculates risk metrics, detects concentration and theme exposures, runs scenario stress tests, and returns a plain-English investment risk memo.
 
-> Built as a polished Option A finance/AI engineering project: professional, testable, API-first, and product-like.
-
 ## Features
 
 - **Portfolio risk metrics**: annualized volatility, daily 95% VaR, daily 95% expected shortfall, max drawdown, Sharpe-like and Sortino-like ratios
